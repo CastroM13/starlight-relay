@@ -1,7 +1,14 @@
+const sql = require("mssql");
+const express = require("express");
+const cors = require("cors");
+const app = express();
+const puppeteer = require('puppeteer');
+global.fetch = require("node-fetch");
+
 const connStr = {
   "user": 'admin',
-  "password": '3[n.svEy5X7@a4r)',
-  "server": 'localhost',
+  "password": '5398Matheussamanco@',
+  "server": '192.168.0.115',
   "database": 'starhub',
   "port": 1433,
   "dialect": "mssql",
@@ -10,35 +17,14 @@ const connStr = {
       "enableArithAbort": true
   }
 };
-//  'Server=localhost;Database=vgstudio;User Id=admin;Password=3[n.svEy5X7@a4r); Encrypt=true';
-var crypto = require('crypto');
-const sql = require("mssql");
-var express = require("express");
-var cors = require("cors");
-var app = express();
-var http = require("http").createServer(app);
-const puppeteer = require('puppeteer')
-
-// const PORT = 8080;
-
-// http.listen(PORT, () => {
-//   console.log(`listening socket requests on *:${PORT}`);
-// });
 
 app.listen(process.env.PORT || 3000, process.env.YOUR_HOST || "0.0.0.0", () => {
-  console.log("listening API requests on ", process.env.PORT || 3000);
+  console.log(`API Aberta em localhost:${process.env.PORT || 3000}`);
 });
 
 app.use(express.json());
 app.use(cors());
-
-app.get("/", (req, res, next) => {
-  res.write(`
-        <a href="/">/</a><br/>
-        <a href="/test">/test</a><br/>
-        <a href="/login">/login</a><br/>
-        `);
-});
+app.use(express.urlencoded({ extended: true, type: ['image/*']}));
 
 async function getVisual(origin) {
   const browser = await puppeteer.launch();
@@ -132,82 +118,198 @@ app.get("/offers/:origin", (req, res, next) => {
     .then((e) => res.send(e));
 });
 
-
-app.get("/comments/:postID", (req, res, next) => {
+app.get("/post/:postID/stats", (req, res, next) => {
   const postID = req.params.postID;
-  res.json([
-    {
-      profileImage: "https://lorempixel.com/48/48",
-      name: "SkillnexRoband",
-      comment: "Top!",
-      likes: [0,1,2,3,4,5,6],
-      dislikes: [0,1,2,3],
-      responses: [
-        {
-          profileImage: "https://lorempixel.com/48/48",
-          name: "Blubbering",
-          comment: "Não achei, não achei mesmo, discordo completamente, acho que se tivesse como discordar mais eu tinha discordado, se tivesse foto no dicionário, lá no de 'Discordar' ia estar minha foto.",
-          likes: [0,1,2,3],
-          dislikes: [],
-          responses: [
-            {
-              profileImage: "https://lorempixel.com/48/48",
-              name: "ShihTzu",
-              comment: "Panaca",
-              likes: [0,1,2,3,4,5,6],
-              dislikes: [],
-              responses: [],
-            },
-          ],
-        },
-        {
-          profileImage: "https://lorempixel.com/48/48",
-          name: "Kavaper9909",
-          comment: "OK, mas eu gosto de pastel",
-          likes: [0,4,5,6],
-          dislikes: [0,1,2,3,4,5,6],
-          responses: [],
-        },
-      ],
-    },
-    {
-      profileImage: "https://lorempixel.com/48/48",
-      name: "SkillnexRoband",
-      comment: "Lorem ipsum dolor, sit amet consectetur adipisicing elit. Ipsum et, tempora repellat delectus provident odio cupiditate, necessitatibus, quos porro quas nesciunt praesentium? Fugiat enim quidem aut et tempore unde quod?",
-      likes: [0,1,2,3,4,5,6],
-      dislikes: [0,1,2,3,4,5,6],
-      responses: [
-        {
-          profileImage: "https://lorempixel.com/48/48",
-          name: "John Bob",
-          comment: "o maluco tá possuído wtf",
-          likes: [0,1,2,3,4,5,6],
-          dislikes: [0,1,2,3,4,5,6],
-          responses: [],
-        },
-        {
-          profileImage: "https://lorempixel.com/48/48",
-          name: "Kavaper9909",
-          comment: "pastel",
-          likes: [0,1,2,3,4,5,6],
-          dislikes: [0,1,2,3,4,5,6],
-          responses: [],
-        },
-      ],
-    },
-  ])
+  if (postID) {
+    sql
+      .connect(connStr)
+      .then(async function retorno(conn) {
+        const result = await sql.query`
+          DECLARE @ID_NewsComments INT;
+          DECLARE @ID_NewsStats INT;
+          DECLARE @News_Identity VARCHAR(500) = ${postID};
+          
+          SELECT NewsStats.ID_NewsStats,
+              ID_NewsComments,
+              [Text],
+              ProfileImage,
+              DisplayName,
+              LoginName
+            FROM NewsStats
+            INNER JOIN NewsComments
+            ON NewsComments.ID_NewsStats = NewsStats.ID_NewsStats
+            INNER JOIN [User]
+            ON NewsComments.ID_User = [User].UserID
+            WHERE News_Identity = @News_Identity
+          
+          SELECT TOP 1 @ID_NewsStats = ID_NewsStats
+            FROM NewsStats
+            WHERE News_Identity = @News_Identity
+          
+          SELECT TOP 1 @ID_NewsComments = ID_NewsComments
+            FROM NewsStats
+            INNER JOIN NewsComments
+            ON NewsComments.ID_NewsStats = NewsStats.ID_NewsStats
+            INNER JOIN [User]
+            ON NewsComments.ID_User = [User].UserID
+            WHERE News_Identity = @News_Identity
+          
+          SELECT ID_ResponseOf,
+               [Text],
+               ProfileImage,
+               DisplayName,
+               LoginName
+            FROM NewsComments
+            INNER JOIN [User]
+            ON NewsComments.ID_User = [User].UserID
+            WHERE ID_ResponseOf IS NOT NULL
+          
+          SELECT ID_User FROM NewsLikes WHERE ID_NewsStats = @ID_NewsStats
+            `;
+        if (result.recordsets) {
+          result.recordsets[0].map(e => {
+            e.responses = [];
+          })
+          var newResult = {
+            likes: [],
+            comments: [
+              ...result.recordsets[0],
+            ],
+          };
+          result.recordsets[2].map(e => {
+            newResult.likes.push(e.ID_User);
+          });
+          result.recordsets[1].map(e => {
+            if (newResult.comments[newResult.comments.findIndex(i => i.ID_NewsComments === e.ID_ResponseOf)]) {
+              newResult.comments[newResult.comments.findIndex(i => i.ID_NewsComments === e.ID_ResponseOf)].responses.push(e)
+            }
+          })
+          res.json(newResult);
+        } else {
+          res.json(result);
+        }
+      })
+      .catch((err) => console.log("[/stats/:postID] Erro: " + err));
+  } else {
+    res.json();
+  }
+});
+
+app.post("/post/:postID/comment", (req, res, next) => {
+  const ID_User = req.body.ID_User;
+  const News_Identity = decodeURIComponent(req.params.postID);
+  const ID_ResponseOf = req.body.ID_ResponseOf;
+  const Text = req.body.Text;
+  console.log("Request from " + (req.headers['x-forwarded-for'] || req.socket.remoteAddress || null));
+  sql
+    .connect(connStr)
+    .then(async function retorno(conn) {
+      const result = await sql.query`DECLARE @responseMessage VARCHAR
+
+                                     EXEC addComment
+                                      @pID_User = ${ID_User},     
+                                      @pNews_Identity =  ${News_Identity},    
+                                      @pID_ResponseOf = ${ID_ResponseOf},
+                                      @pText = ${Text},   
+                                      @responseMessage = @responseMessage OUTPUT
+                                     
+                                     SELECT @responseMessage`;
+      res.json(result.recordset[0]);
+    })
+    .catch((err) => console.log("[/post/:postID/comment] Erro: " + err));
+});
+
+app.post("/post/:postID/like", (req, res, next) => {
+  const token = req.body.token;
+  const News_Identity = decodeURIComponent(req.params.postID);
+  console.log("Request from " + (req.headers['x-forwarded-for'] || req.socket.remoteAddress || null));
+  sql
+    .connect(connStr)
+    .then(async function retorno(conn) {
+      const result = await sql.query`DECLARE @responseMessage VARCHAR
+
+                                     EXEC likePost @pID_User = ${token},
+                                                   @pNews_Identity =  ${News_Identity},
+                                                   @responseMessage = @responseMessage OUTPUT
+                                     
+                                     SELECT @responseMessage`;
+      res.json(result.recordset[0]);
+    })
+    .catch((err) => console.log("[/post/:postID/comment] Erro: " + err));
+});
+
+app.post("/post/:postID/dislike", (req, res, next) => {
+  const token = req.body.token;
+  const News_Identity = decodeURIComponent(req.params.postID);
+  console.log("Request from " + (req.headers['x-forwarded-for'] || req.socket.remoteAddress || null));
+  sql
+    .connect(connStr)
+    .then(async function retorno(conn) {
+      const result = await sql.query`DECLARE @responseMessage VARCHAR
+
+                                     EXEC dislikePost @pID_User = ${token},
+                                                      @pNews_Identity =  ${News_Identity},
+                                                      @responseMessage = @responseMessage OUTPUT
+                                     
+                                     SELECT @responseMessage`;
+      res.json(result.recordset[0]);
+    })
+    .catch((err) => console.log("[/post/:postID/comment] Erro: " + err));
 });
 
 app.get("/user/:userID", (req, res, next) => {
   const userID = req.params.userID;
-  sql
-    .connect(connStr)
-    .then(async function retorno(conn) {
-      const result = await sql.query`SELECT * FROM [dbo].[User] WHERE UserID = ${userID}`;
-      res.json(result.recordset[0]);
-    })
-    .catch((err) => console.log("erro! " + err));
-})
+  if (userID) {
+    sql
+      .connect(connStr)
+      .then(async function retorno(conn) {
+        const result = await sql.query`SELECT * FROM [dbo].[User] WHERE UserID = ${userID}`;
+        res.json(result.recordset[0]);
+      })
+      .catch((err) => console.log("[/user/:userID] Erro: " + err));
+  } else {
+    res.json();
+  }
+});
+
+app.post("/user/:userID/image", (req, res, next) => {
+  const ID_User = req.params.ID_User;
+  const file = new Buffer.from(req.body);
+  console.log(file);
+  console.log("Request from " + (req.headers['x-forwarded-for'] || req.socket.remoteAddress || null));
+  console.log(require('fs').createReadStream(file));
+  fetch('https://api.imgur.com/3/image', { // Your POST endpoint
+    method: 'POST',
+    encoding: null,
+    headers: {
+      'content-type' : 'image/jpg',
+      'Authorization': 'Client-ID ca92714459254a2'
+    },
+    body: require('fs').createReadStream(file)
+  }).then(
+    response => response.json() // if the response is a JSON object
+  ).then(
+    success => console.log(success) // Handle the success response object
+  ).catch(
+    error => console.log(error) // Handle the error response object
+  );
+  // sql
+  //   .connect(connStr)
+  //   .then(async function retorno(conn) {
+  //     const result = await sql.query`DECLARE @responseMessage VARCHAR
+
+  //                                    EXEC addComment
+  //                                     @pID_User = ${ID_User},     
+  //                                     @pNews_Identity =  ${News_Identity},    
+  //                                     @pID_ResponseOf = ${ID_ResponseOf},
+  //                                     @pText = ${Text},   
+  //                                     @responseMessage = @responseMessage OUTPUT
+                                     
+  //                                    SELECT @responseMessage`;
+  //     res.json(result.recordset[0]);
+  //   })
+  //   .catch((err) => console.log("[/post/:postID/comment] Erro: " + err));
+});
 
 app.post("/login", (req, res, next) => {
   const user = req.body.user;
@@ -224,5 +326,27 @@ app.post("/login", (req, res, next) => {
                                      SELECT @token as N'token'`;
       res.json(result.recordset[0]);
     })
-    .catch((err) => console.log("erro! " + err));
+    .catch((err) => console.log("[/login] Erro: " + err));
+});
+
+app.post("/register", (req, res, next) => {
+  const user = req.body.user;
+  const displayName = req.body.displayName;
+  const password = req.body.password;
+  console.log("Request from " + (req.headers['x-forwarded-for'] || req.socket.remoteAddress || null));
+  sql
+    .connect(connStr)
+    .then(async function retorno(conn) {
+      const result = await sql.query`DECLARE @token INTEGER
+                                     DECLARE @responseMessage NVARCHAR(250)
+                                     EXEC dbo.addUser @pLogin = ${user},
+                                             @pPassword = ${password},
+                                             @profileImage = '',
+                                             @displayName = ${displayName},
+                                             @token = @token OUTPUT,
+                                             @responseMessage = @responseMessage OUTPUT
+                                     SELECT @token as N'token', @responseMessage as N'response'`;
+      res.json(result.recordset[0]);
+    })
+    .catch((err) => console.log("[/login] Erro: " + err));
 });
