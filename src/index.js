@@ -8,7 +8,7 @@ global.fetch = require("node-fetch");
 const connStr = {
   "user": 'admin',
   "password": '5398Matheussamanco@',
-  "server": '192.168.0.115',
+  "server": '187.85.207.56',
   "database": 'starhub',
   "port": 1433,
   "dialect": "mssql",
