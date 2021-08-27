@@ -27,7 +27,12 @@ app.use(cors());
 app.use(express.urlencoded({ extended: true, type: ['image/*']}));
 
 async function getVisual(origin) {
-  const browser = await puppeteer.launch();
+  const browser = await puppeteer.launch({
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+    ],
+  });
 	try {
     const page = await browser.newPage();
     await page.setDefaultNavigationTimeout(0); 
