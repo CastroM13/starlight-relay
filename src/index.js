@@ -50,11 +50,7 @@ const connStr = {
 };
 
 async function main(email_to, verifyToken) {
-  const user_name     = `noreply.starhub@gmail.com`;
-  const refresh_token = '1//048W1XGI8V11OCgYIARAAGAQSNwF-L9IrdSP0bCuKvIUSzuToZ3V1yuiEtEPY9HsmXkwQtyxrfKr0w1e8ghTlsEv_g192828xAtE';
-  const access_token  = 'ya29.a0ARrdaM-YLPFwORSJj1OzsW1Nka2gHmoBsd8OE--_cFnkDCy--g7D3KswsQjwV5AZpTVgc47KS0hgkDnmhYvdNh5CivSjlTUMWRrjcMvcu5n4brLry4xg7yCfo4ES2FHuHCDZLiwHyXJrDoFx2WJmAbIiTuEC';
-  const client_id     = '683143169807-t16venht25c9isqdaf1pl22222ij93uk.apps.googleusercontent.com';
-  const client_secret = '8hP7aLT5YrUe-PFmvW_8xSWz';
+  #EMAIL AUTH TXT
 
   const nodemailer = require('nodemailer');
 
